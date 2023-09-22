@@ -23,12 +23,7 @@ func Instance() Config {
 	return config
 }
 
-func Init(c ...Config) Config {
-	if len(c) == 1 {
-		config = c[0]
-		return config
-	}
-
+func InitDbConfig() *Config {
 	var ok bool
 	user, ok := os.LookupEnv("POSTGRES_HOST")
 	password, ok := os.LookupEnv("POSTGRES_USER")
@@ -38,17 +33,16 @@ func Init(c ...Config) Config {
 
 	if !ok {
 		fmt.Println("The database environment variables does not exist or are not set.")
-		return Config{}
+		return &config
 	}
 
-	config = Config{
-		Database: Database{
-			Host:     user,
-			User:     password,
-			Password: host,
-			Name:     name,
-			Port:     port,
-		},
+	config.Database = Database{
+		Host:     user,
+		User:     password,
+		Password: host,
+		Name:     name,
+		Port:     port,
 	}
-	return config
+
+	return &config
 }

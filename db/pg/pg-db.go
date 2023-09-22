@@ -7,9 +7,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/dzemildupljak/web_app_with_unitest/config"
 	_ "github.com/lib/pq"
-
-	"github.com/dzemildupljak/web_app_with_unitest/generic/config"
 )
 
 var ErrNotFound = errors.New("database record not found\n")
@@ -32,6 +31,7 @@ func Init() {
 	} else {
 		fmt.Println("successfully connected to database")
 	}
+
 	db.SetConnMaxLifetime(time.Minute * 10)
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)

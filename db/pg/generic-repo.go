@@ -7,11 +7,28 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/dzemildupljak/web_app_with_unitest/generic/common"
+	"github.com/dzemildupljak/web_app_with_unitest/common"
 	"github.com/lib/pq"
 )
 
-func GetRow[T any, PT common.Ptr[T]](ctx context.Context, q string, args ...any) (T, error) {
+func Create(ctx context.Context, q string, args ...any) error {
+	_, err := database.ExecContext(ctx, q, args...)
+	if err != nil {
+		return fmt.Errorf("Create failed\n%s: %w", q, err)
+	}
+	return err
+}
+
+func Delete(ctx context.Context, q string, args ...any) (int64, error) {
+	res, err := database.ExecContext(ctx, q, args...)
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return rows, fmt.Errorf("Delete failed\n%s: %w", q, err)
+	}
+	return rows, err
+}
+
+func FindRow[T any, PT common.Ptr[T]](ctx context.Context, q string, args ...any) (T, error) {
 	row := database.QueryRowContext(ctx, q, args...)
 	var t T
 	ptr := PT(&t)
@@ -19,8 +36,10 @@ func GetRow[T any, PT common.Ptr[T]](ctx context.Context, q string, args ...any)
 		if errors.Is(err, sql.ErrNoRows) {
 			return t, ErrNotFound
 		}
+
 		return t, fmt.Errorf("GetRow row.Scan error\n%s: %w", q, err)
 	}
+
 	return t, nil
 }
 
@@ -49,17 +68,35 @@ func FindRows[T any, PT common.Ptr[T]](ctx context.Context, q string, args ...an
 	return result, nil
 }
 
-type TOrderDir string
+func Query(ctx context.Context, q string, args ...any) error {
+	_, err := database.QueryContext(ctx, q, args...)
+	if err != nil {
+		return fmt.Errorf("Create failed\n%s: %w", q, err)
+	}
+	return err
+}
+
+func Exec(ctx context.Context, q string, args ...any) error {
+	_, err := database.ExecContext(ctx, q, args...)
+	if err != nil {
+		return fmt.Errorf("Create failed\n%s: %w", q, err)
+	}
+	return err
+}
+
+type OrderDirType string
 
 const (
-	ASC  TOrderDir = "ASC"
-	DESC TOrderDir = "DESC"
+	ASC  OrderDirType = "ASC"
+	DESC OrderDirType = "DESC"
 )
 
+type QueryFilter map[string]any
+
 type QueryOptions struct {
-	Filter   map[string]interface{}
+	Filter   QueryFilter
 	OrderBy  string
-	OrderDir TOrderDir
+	OrderDir OrderDirType
 	Limit    int
 	Page     int
 }
@@ -112,9 +149,30 @@ func GetValidColumns[T any, PT common.Ptr[T]]() (map[string]bool, []string) {
 	return validColumns, columnsName
 }
 
-func BuildWhereClauses(filters map[string]interface{}, startIdx int) ([]string, []interface{}) {
+func GetColumnsAndValues[T any, PT common.Ptr[T]](data T) ([]string, []any) {
+	columnsName := []string{}
+	columnsValue := []any{}
+
+	t := reflect.TypeOf(data)
+	v := reflect.ValueOf(data)
+
+	for i := 0; i < t.NumField(); i++ {
+		columnName := t.Field(i).Tag.Get("column_name")
+		if columnName == "id" {
+			continue
+		}
+		columnVal := v.Field(i).Interface()
+
+		columnsName = append(columnsName, columnName)
+		columnsValue = append(columnsValue, columnVal)
+	}
+
+	return columnsName, columnsValue
+}
+
+func BuildWhereClauses(filters map[string]any, startIdx int) ([]string, []any) {
 	var whereClauses []string
-	var whereValues []interface{}
+	var whereValues []any
 
 	for column, value := range filters {
 		switch val := value.(type) {

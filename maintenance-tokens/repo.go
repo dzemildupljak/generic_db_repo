@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dzemildupljak/web_app_with_unitest/generic/common"
-	"github.com/dzemildupljak/web_app_with_unitest/generic/db"
+	"github.com/dzemildupljak/web_app_with_unitest/common"
+	db "github.com/dzemildupljak/web_app_with_unitest/db/pg"
 )
 
 const userTable = "public.user_maintenance_tokens"
@@ -49,10 +49,7 @@ func (ur *UmtRepo[T, PT]) GetUMToken(qo db.QueryOptions) (T, error) {
 		return user, db.ErrIvalidFilters
 	}
 
-	fmt.Println(query)
-	fmt.Println(values...)
-
-	user, err := db.GetRow[T, PT](ctx, query, values...)
+	user, err := db.FindRow[T, PT](ctx, query, values...)
 	if err != nil {
 		// TODO: add persistent logger for db errors
 		return user, err
